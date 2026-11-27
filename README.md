@@ -1,8 +1,61 @@
 # Pocket Looper
 
-Pocket Looper is firmware for the Waveshare ESP32-S3-Touch-AMOLED-1.8 board. The board is a Bluetooth Low Energy MIDI controller for the Android looper app Loopify. It shows four large pads for recording, undoing, playing and starting a new idea, and it sends MIDI notes that Loopify has been told to listen for.
+The Pocket Looper is a small touchscreen remote for building songs out of your own voice. You hum or sing a short phrase, it plays back as a repeating loop, and you add more phrases on top. A phone does the recording and playback. The remote in your hand tells the phone what to do, so the phone can stay in your pocket.
 
-The firmware is written in C for ESP-IDF 5.5 or newer. It uses NimBLE for Bluetooth and LVGL 9 for the screen. Waveshare's board support component, `waveshare/esp32_s3_touch_amoled_1_8`, starts the display and the touch controller, so the project contains no display or touch drivers.
+This repository holds the remote's firmware. The first half of this page explains how the system works for someone new to it; the second half, from "Build and flash" on, is the reference for building and changing it.
+
+## How it works
+
+### The three parts
+
+| Part | What it is | What it does |
+| --- | --- | --- |
+| The board | A Waveshare ESP32-S3-Touch-AMOLED-1.8: a matchbox-sized computer with a 1.8 inch touchscreen, Bluetooth and a small rechargeable battery | Shows four large pads, notices taps and long presses, and sends a short message to the phone for each one. It handles no sound at all. |
+| Loopify | A looper app on an Android phone (the Pro version, which accepts outside controllers) | Records the microphone, repeats each recording as a loop, keeps the loops in time with each other, mixes them, and saves the session automatically. |
+| The headset | An ordinary headset with a microphone, connected to the phone | Carries your voice in and the loops back out. It is needed whenever the phone is in a pocket, because the board is only a remote control and the phone does all the listening and recording. With the phone in your hand, its own microphone and speaker can do the job. |
+
+### How a tap becomes a loop
+
+1. You tap the record pad on the board.
+2. The board sends one small message to the phone over Bluetooth. The messages use MIDI, a standard language that electronic instruments use to say things like "this key was pressed". The board presents itself as a tiny wireless keyboard with twelve keys.
+3. Loopify was taught once, during setup, what each of those keys means: one key starts or stops a recording, one is undo, one is redo, one pauses or resumes everything, and eight clear the eight loops.
+4. Loopify does the action. For record, it starts recording into the first empty loop. A second tap stops the recording, and Loopify begins repeating it, lined up with the loops already playing.
+5. You hear the result.
+
+### The four pads
+
+| Pad | Tap | Long press |
+| --- | --- | --- |
+| Record (red circle) | Start a recording, or finish it and let it loop. Each new recording becomes another layer, up to eight. | Nothing |
+| Undo (backspace arrow) | Remove the most recent layer | Bring it back |
+| Play (triangle) | Pause or resume everything | Stop. Loopify has already saved the session by this point. |
+| New (plus) | Nothing, so it cannot be hit by accident | Ask for confirmation, then clear all eight loops for a fresh idea |
+
+The line at the top of the screen shows where things stand (Ready, Recording, Playing, Overdubbing, Paused or Saved), how many layers exist, and the battery level. A pad flashes green when the board accepts a press and dark red when the press makes no sense right now, such as undo with nothing recorded.
+
+### Who is responsible for what
+
+Loopify owns everything about sound: recording, timing, mixing and saving. The board owns the experience in your hand: what the pads mean at each moment, which presses are allowed, and what the screen shows.
+
+One limit follows from this split. Messages only travel from the board to the phone; Loopify never reports back. The board therefore keeps its own running account of what Loopify should be doing, based on the messages it has sent. If the two ever disagree, for example after the Bluetooth link drops for a moment, the screen can show the wrong state. The board has a second screen for that case, opened with its side button, where each message can be sent on its own and the board's account can be reset.
+
+### Inside the board's software
+
+The firmware is written in C for ESP-IDF 5.5 or newer, Espressif's standard toolkit for this chip. It uses NimBLE for Bluetooth and LVGL 9 for the screen, and Waveshare's board support component, `waveshare/esp32_s3_touch_amoled_1_8`, starts the display and the touch controller, so the project contains no display or touch drivers. It has four main parts that know as little about each other as possible:
+
+- **The rules.** A small piece of plain logic that takes "this pad was tapped" and answers "the new state is Playing, and these messages should be sent". It has no knowledge of screens or Bluetooth, so it is tested on an ordinary computer with about a hundred automatic checks.
+- **The screen.** Draws the pads and the status line and reports taps and long presses.
+- **The Bluetooth link.** Makes the board appear to the phone as a wireless MIDI device and delivers the messages.
+- **The sender.** Turns each decision from the rules into the right notes, spaced a few hundredths of a second apart so that Loopify receives a burst, such as clearing all eight loops, as separate messages.
+
+"Source layout" below names the file behind each part.
+
+### What is not finished
+
+- The setup has been tried without a headset only. Recording through a headset microphone, and using all eight layers, still need testing.
+- Three behaviours are assumed and not yet confirmed: that undo removes exactly one layer, that pausing silences every loop, and that clearing everything leaves Loopify stopped.
+- Battery life has not been measured.
+- When the Bluetooth link drops, Loopify may need to be reopened before it reconnects.
 
 ## Build and flash
 
