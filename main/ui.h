@@ -2,6 +2,7 @@
 
 #include <stdbool.h>
 
+#include "battery.h"
 #include "esp_err.h"
 #include "looper.h"
 
@@ -19,5 +20,7 @@ esp_err_t ui_init(const ui_callbacks_t *callbacks);
 void ui_set_looper(const looper_t *looper);
 
 void ui_set_can_send(bool can_send);
+
+void ui_set_battery(const battery_status_t *battery);
 
 void ui_toggle_setup(void);

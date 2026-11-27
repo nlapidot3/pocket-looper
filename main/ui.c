@@ -55,6 +55,14 @@ void ui_set_can_send(bool can_send)
     }
 }
 
+void ui_set_battery(const battery_status_t *battery)
+{
+    if (bsp_display_lock(0)) {
+        ui_main_set_battery(battery);
+        bsp_display_unlock();
+    }
+}
+
 void ui_toggle_setup(void)
 {
     if (bsp_display_lock(0)) {

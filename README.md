@@ -50,6 +50,8 @@ Open Loopify's MIDI settings and bind each action to the note in the table above
 
 The top line shows the current state on the left, and the number of recorded layers on the right once there is at least one. When the board cannot send, the left side shows `No phone` instead of the state.
 
+At the far right of the top line, the board shows a battery symbol that fills in five steps, with a lightning bolt in front of it while the battery is charging. The charge is read from the board's power chip every 5 seconds. Nothing is shown when no battery is connected or the chip cannot be read, and the layer count sits just left of the symbol.
+
 A tap is a press released in under 600 milliseconds. It is reported when the finger lifts. A long press is reported once, 600 milliseconds after the finger touched the pad and while it is still down. Lifting the finger after a long press sends nothing, and a finger that slides off a pad before lifting sends nothing.
 
 Every gesture gives feedback on the pad. An accepted tap flashes it green, an accepted long press flashes it orange, and a gesture that does nothing in the current state flashes it dark red.
@@ -102,17 +104,18 @@ The board cannot see Loopify's real state. If something is changed in Loopify di
 
 ## Unit tests
 
-The state machine in `main/looper.c` has no ESP-IDF, LVGL or Bluetooth dependencies and is tested on the computer with the host C compiler:
+The state machine in `main/looper.c` and the battery level choice in `main/battery_level.c` have no ESP-IDF, LVGL or Bluetooth dependencies and are tested on the computer with the host C compiler:
 
 ```sh
 test/run.sh
 ```
 
-The script compiles `test/test_looper.c` together with `main/looper.c` and runs it. The tests are not part of the firmware build.
+The script compiles each test file together with the source file it covers and runs it. The tests are not part of the firmware build.
 
 ## Source layout
 
 - `main/app_main.c` starts the other parts and connects them. It applies each gesture to the state machine and sends the resulting actions.
+- `main/battery.c` reads the battery state from the AXP2101 power chip over I2C, and `main/battery_level.c` maps a percentage to one of five symbol levels.
 - `main/looper.c` is the state machine. It decides what a gesture does and which actions to send, and never sends anything itself.
 - `main/commands.c` turns actions into MIDI notes, spaces them out and sends the Note Off messages, on its own task so the screen never waits.
 - `main/ble_midi.c` is the Bluetooth MIDI peripheral and knows nothing about the screen.

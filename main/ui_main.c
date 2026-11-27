@@ -1,8 +1,10 @@
+#include "battery_level.h"
 #include "bsp/esp-bsp.h"
 #include "ui_internal.h"
 
 #define STATUS_HEIGHT 48
 #define STATUS_MARGIN 14
+#define STATUS_GAP 12
 #define PAD_GAP 8
 #define PAD_RADIUS 20
 #define CONFIRM_TIMEOUT_MS 4000
@@ -29,6 +31,10 @@ static const char *const STATE_NAMES[] = {
     [LOOPER_SAVED] = "Saved",
 };
 
+static const char *const BATTERY_SYMBOLS[BATTERY_LEVEL_COUNT] = {
+    LV_SYMBOL_BATTERY_EMPTY, LV_SYMBOL_BATTERY_1, LV_SYMBOL_BATTERY_2, LV_SYMBOL_BATTERY_3, LV_SYMBOL_BATTERY_FULL,
+};
+
 typedef struct {
     ui_pad_t pad;
     looper_button_t button;
@@ -41,6 +47,7 @@ static bool s_can_send;
 
 static lv_obj_t *s_state_label;
 static lv_obj_t *s_layers_label;
+static lv_obj_t *s_battery_label;
 static lv_obj_t *s_record_shape;
 static lv_obj_t *s_play_symbol;
 static lv_obj_t *s_overlay;
@@ -145,10 +152,9 @@ static lv_obj_t *create_symbol(lv_obj_t *parent, const char *symbol)
     return label;
 }
 
-static lv_obj_t *create_status_label(lv_obj_t *screen, lv_align_t align, int32_t x)
+static lv_obj_t *create_status_label(lv_obj_t *parent)
 {
-    lv_obj_t *label = lv_label_create(screen);
-    lv_obj_align(label, align, x, (STATUS_HEIGHT - lv_font_montserrat_18.line_height) / 2);
+    lv_obj_t *label = lv_label_create(parent);
     lv_obj_set_style_text_font(label, &lv_font_montserrat_18, LV_PART_MAIN);
     lv_obj_set_style_text_color(label, lv_color_hex(UI_COLOR_TEXT), LV_PART_MAIN);
     return label;
@@ -224,8 +230,21 @@ void ui_main_create(lv_obj_t *screen, const ui_callbacks_t *callbacks)
     lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_scrollable(screen, false);
 
-    s_state_label = create_status_label(screen, LV_ALIGN_TOP_LEFT, STATUS_MARGIN);
-    s_layers_label = create_status_label(screen, LV_ALIGN_TOP_RIGHT, -STATUS_MARGIN);
+    int32_t status_y = (STATUS_HEIGHT - lv_font_montserrat_18.line_height) / 2;
+    s_state_label = create_status_label(screen);
+    lv_obj_align(s_state_label, LV_ALIGN_TOP_LEFT, STATUS_MARGIN, status_y);
+
+    lv_obj_t *status_right = lv_obj_create(screen);
+    lv_obj_remove_style_all(status_right);
+    lv_obj_set_scrollable(status_right, false);
+    lv_obj_set_clickable(status_right, false);
+    lv_obj_set_size(status_right, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+    lv_obj_set_flex_flow(status_right, LV_FLEX_FLOW_ROW);
+    lv_obj_set_style_pad_column(status_right, STATUS_GAP, LV_PART_MAIN);
+    lv_obj_align(status_right, LV_ALIGN_TOP_RIGHT, -STATUS_MARGIN, status_y);
+    s_layers_label = create_status_label(status_right);
+    s_battery_label = create_status_label(status_right);
+    lv_obj_set_hidden(s_battery_label, true);
 
     lv_obj_t *grid = lv_obj_create(screen);
     lv_obj_remove_style_all(grid);
@@ -250,4 +269,19 @@ void ui_main_set_can_send(bool can_send)
 {
     s_can_send = can_send;
     refresh();
+}
+
+void ui_main_set_battery(const battery_status_t *battery)
+{
+    if (!battery->present) {
+        lv_obj_set_hidden(s_battery_label, true);
+        return;
+    }
+    const char *symbol = BATTERY_SYMBOLS[battery_level(battery->percent)];
+    if (battery->charging) {
+        lv_label_set_text_fmt(s_battery_label, LV_SYMBOL_CHARGE " %s", symbol);
+    } else {
+        lv_label_set_text(s_battery_label, symbol);
+    }
+    lv_obj_set_hidden(s_battery_label, false);
 }

@@ -31,4 +31,6 @@ void ui_main_set_looper(const looper_t *looper);
 
 void ui_main_set_can_send(bool can_send);
 
+void ui_main_set_battery(const battery_status_t *battery);
+
 void ui_setup_create(lv_obj_t *screen, const ui_callbacks_t *callbacks);
