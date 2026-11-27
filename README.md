@@ -2,6 +2,10 @@
 
 The Pocket Looper is a small touchscreen remote for building songs out of your own voice. You hum or sing a short phrase, it plays back as a repeating loop, and you add more phrases on top. A phone does the recording and playback. The remote in your hand tells the phone what to do, so the phone can stay in your pocket.
 
+[![A drawing of the remote's four pads beside the Loopify screen, with a headset connected to the phone](docs/explainer.jpg)](https://drive.google.com/file/d/1sLesEDMuPEUGnu5PT3AEzXP90076Nedf/view)
+
+[Watch the one-minute explainer video](https://drive.google.com/file/d/1sLesEDMuPEUGnu5PT3AEzXP90076Nedf/view).
+
 This repository holds the remote's firmware. The first half of this page explains how the system works for someone new to it; the second half, from "Build and flash" on, is the reference for building and changing it.
 
 ## How it works
